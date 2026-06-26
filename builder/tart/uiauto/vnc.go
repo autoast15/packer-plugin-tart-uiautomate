@@ -34,8 +34,12 @@ func (v *VNC) run(ctx context.Context, args ...string) error {
 }
 
 func (v *VNC) Capture(ctx context.Context, path string) error { return v.run(ctx, "capture", path) }
-func (v *VNC) Move(ctx context.Context, x, y int) error { return v.run(ctx, "move", strconv.Itoa(x), strconv.Itoa(y)) }
-func (v *VNC) Click(ctx context.Context, x, y int) error { return v.run(ctx, "move", strconv.Itoa(x), strconv.Itoa(y), "click", "1") }
+func (v *VNC) Move(ctx context.Context, x, y int) error {
+	return v.run(ctx, "move", strconv.Itoa(x), strconv.Itoa(y))
+}
+func (v *VNC) Click(ctx context.Context, x, y int) error {
+	return v.run(ctx, "move", strconv.Itoa(x), strconv.Itoa(y), "click", "1")
+}
 func (v *VNC) DoubleClick(ctx context.Context, x, y int) error {
 	return v.run(ctx, "move", strconv.Itoa(x), strconv.Itoa(y), "click", "1", "click", "1")
 }

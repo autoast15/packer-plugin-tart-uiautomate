@@ -3,7 +3,7 @@ package tart
 import (
 	"context"
 	"fmt"
-	"packer-plugin-tart/builder/tart/recoverypartition"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/recoverypartition"
 	"strconv"
 
 	"github.com/hashicorp/packer-plugin-sdk/multistep"

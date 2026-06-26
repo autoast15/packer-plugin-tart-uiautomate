@@ -14,15 +14,16 @@ type Logger interface {
 }
 
 type noopLogger struct{}
+
 func (noopLogger) Say(string) {}
 
 type Runner struct {
-	cfg    *Config
-	log    Logger
-	vnc    *VNC
-	cg     *CGTool
-	trace  *os.File
-	step   int
+	cfg   *Config
+	log   Logger
+	vnc   *VNC
+	cg    *CGTool
+	trace *os.File
+	step  int
 }
 
 func NewRunner(cfg *Config, log Logger) *Runner {
@@ -38,13 +39,48 @@ func NewRunner(cfg *Config, log Logger) *Runner {
 }
 
 func (r *Runner) useCGTool() bool { return r.cfg.UIBackend == "cgtool" }
-func (r *Runner) Capture(ctx context.Context, path string) error { if r.useCGTool() { return r.cg.Capture(ctx, path) }; return r.vnc.Capture(ctx, path) }
-func (r *Runner) Move(ctx context.Context, x, y int) error { if r.useCGTool() { return r.cg.Move(ctx, x, y) }; return r.vnc.Move(ctx, x, y) }
-func (r *Runner) Click(ctx context.Context, x, y int) error { if r.useCGTool() { return r.cg.Click(ctx, x, y) }; return r.vnc.Click(ctx, x, y) }
-func (r *Runner) DoubleClick(ctx context.Context, x, y int) error { if r.useCGTool() { return r.cg.DoubleClick(ctx, x, y) }; return r.vnc.DoubleClick(ctx, x, y) }
-func (r *Runner) Drag(ctx context.Context, x1, y1, x2, y2 int) error { if r.useCGTool() { return r.cg.Drag(ctx, x1, y1, x2, y2) }; return r.vnc.Drag(ctx, x1, y1, x2, y2) }
-func (r *Runner) Scroll(ctx context.Context, dx, dy int) error { if r.useCGTool() { return r.cg.Scroll(ctx, dx, dy) }; return r.vnc.Scroll(ctx, dx, dy) }
-func (r *Runner) TypeText(ctx context.Context, text string) error { if r.useCGTool() { return r.cg.TypeText(ctx, text) }; return r.vnc.TypeText(ctx, text) }
+func (r *Runner) Capture(ctx context.Context, path string) error {
+	if r.useCGTool() {
+		return r.cg.Capture(ctx, path)
+	}
+	return r.vnc.Capture(ctx, path)
+}
+func (r *Runner) Move(ctx context.Context, x, y int) error {
+	if r.useCGTool() {
+		return r.cg.Move(ctx, x, y)
+	}
+	return r.vnc.Move(ctx, x, y)
+}
+func (r *Runner) Click(ctx context.Context, x, y int) error {
+	if r.useCGTool() {
+		return r.cg.Click(ctx, x, y)
+	}
+	return r.vnc.Click(ctx, x, y)
+}
+func (r *Runner) DoubleClick(ctx context.Context, x, y int) error {
+	if r.useCGTool() {
+		return r.cg.DoubleClick(ctx, x, y)
+	}
+	return r.vnc.DoubleClick(ctx, x, y)
+}
+func (r *Runner) Drag(ctx context.Context, x1, y1, x2, y2 int) error {
+	if r.useCGTool() {
+		return r.cg.Drag(ctx, x1, y1, x2, y2)
+	}
+	return r.vnc.Drag(ctx, x1, y1, x2, y2)
+}
+func (r *Runner) Scroll(ctx context.Context, dx, dy int) error {
+	if r.useCGTool() {
+		return r.cg.Scroll(ctx, dx, dy)
+	}
+	return r.vnc.Scroll(ctx, dx, dy)
+}
+func (r *Runner) TypeText(ctx context.Context, text string) error {
+	if r.useCGTool() {
+		return r.cg.TypeText(ctx, text)
+	}
+	return r.vnc.TypeText(ctx, text)
+}
 
 func (r *Runner) Run(ctx context.Context) error {
 	if r.cfg == nil || !r.cfg.Enabled {

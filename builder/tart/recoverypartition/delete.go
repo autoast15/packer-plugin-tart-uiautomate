@@ -6,7 +6,7 @@ import (
 	"github.com/diskfs/go-diskfs/partition/gpt"
 	"github.com/hashicorp/packer-plugin-sdk/multistep"
 	"github.com/hashicorp/packer-plugin-sdk/packer"
-	"packer-plugin-tart/builder/tart/statekey"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/statekey"
 )
 
 func Delete(diskImagePath string, ui packer.Ui, state multistep.StateBag) error {

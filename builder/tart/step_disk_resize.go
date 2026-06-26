@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"packer-plugin-tart/builder/tart/statekey"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/statekey"
 	"strings"
 
 	"github.com/hashicorp/packer-plugin-sdk/multistep"

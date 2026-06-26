@@ -9,7 +9,7 @@ import (
 	"github.com/samber/lo"
 	"io"
 	"os"
-	"packer-plugin-tart/builder/tart/statekey"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/statekey"
 )
 
 func Relocate(diskImagePath string, ui packer.Ui, state multistep.StateBag) error {

@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"packer-plugin-tart/builder/tart/recoverypartition"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/recoverypartition"
 	"path/filepath"
 	"testing"
 

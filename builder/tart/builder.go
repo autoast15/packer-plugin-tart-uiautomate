@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/packer-plugin-sdk/packer"
 	"github.com/hashicorp/packer-plugin-sdk/template/config"
 	"github.com/hashicorp/packer-plugin-sdk/template/interpolate"
+
 	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/uiauto"
 )
 
@@ -28,14 +29,13 @@ type Config struct {
 	commonsteps.HTTPConfig `mapstructure:",squash"`
 	CommunicatorConfig     communicator.Config `mapstructure:",squash"`
 
-	FromIPSW        string   `mapstructure:"from_ipsw"`
-	FromISO         []string `mapstructure:"from_iso"`
-	VMBaseName      string   `mapstructure:"vm_base_name"`
-	VMName          string   `mapstructure:"vm_name"`
-	AllowInsecure   bool     `mapstructure:"allow_insecure"`
-	AlwaysPull      bool     `mapstructure:"always_pull"`
-	PullConcurrency uint16   `mapstructure:"pull_concurrency"`
-
+	FromIPSW          string        `mapstructure:"from_ipsw"`
+	FromISO           []string      `mapstructure:"from_iso"`
+	VMBaseName        string        `mapstructure:"vm_base_name"`
+	VMName            string        `mapstructure:"vm_name"`
+	AllowInsecure     bool          `mapstructure:"allow_insecure"`
+	AlwaysPull        bool          `mapstructure:"always_pull"`
+	PullConcurrency   uint16        `mapstructure:"pull_concurrency"`
 	CpuCount          uint8         `mapstructure:"cpu_count"`
 	CreateGraceTime   time.Duration `mapstructure:"create_grace_time"`
 	DiskSizeGb        uint16        `mapstructure:"disk_size_gb"`
@@ -48,10 +48,10 @@ type Config struct {
 	Rosetta           string        `mapstructure:"rosetta"`
 	RunExtraArgs      []string      `mapstructure:"run_extra_args"`
 	IpExtraArgs       []string      `mapstructure:"ip_extra_args"`
+
 	UIAutomation *uiauto.Config `mapstructure:"ui_automation"`
 
 	ctx interpolate.Context
-	
 }
 
 type Builder struct {
@@ -59,7 +59,9 @@ type Builder struct {
 	runner multistep.Runner
 }
 
-func (b *Builder) ConfigSpec() hcldec.ObjectSpec { return b.config.FlatMapstructure().HCL2Spec() }
+func (b *Builder) ConfigSpec() hcldec.ObjectSpec {
+	return b.config.FlatMapstructure().HCL2Spec()
+}
 
 func (b *Builder) Prepare(raws ...interface{}) (generatedVars []string, warnings []string, err error) {
 	err = config.Decode(&b.config, &config.DecodeOpts{
@@ -76,11 +78,11 @@ func (b *Builder) Prepare(raws ...interface{}) (generatedVars []string, warnings
 		return nil, nil, err
 	}
 
-if c.UIAutomation != nil {
-    if err := c.UIAutomation.PrepareDefaults(); err != nil {
-        errs = packersdk.MultiErrorAppend(errs, err)
-    }
-}
+	if b.config.UIAutomation != nil {
+		if err := b.config.UIAutomation.PrepareDefaults(); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	fromArgs := []bool{
 		b.config.FromIPSW != "",
@@ -98,22 +100,6 @@ if c.UIAutomation != nil {
 		}
 	}
 
-	// Set default disk format if not specified
-	if b.config.DiskFormat == "" {
-		b.config.DiskFormat = "raw"
-	}
-
-	// Validate disk format
-	if b.config.DiskFormat != "raw" && b.config.DiskFormat != "asif" {
-		return nil, nil, fmt.Errorf("disk_format must be either 'raw' or 'asif', got '%s'", b.config.DiskFormat)
-	}
-
-	if b.config.DiskFormat == "asif" && b.config.RecoveryPartition != "keep" {
-		return nil, nil, fmt.Errorf("please set the \"recovery_partition\" " +
-			"to \"keep\", as \"delete\" (the default) and \"relocate\" are not supported " +
-			"for ASIF disks")
-	}
-
 	if errs := b.config.CommunicatorConfig.Prepare(&b.config.ctx); len(errs) != 0 {
 		return nil, nil, packer.MultiErrorAppend(nil, errs...)
 	}
@@ -122,17 +108,6 @@ if c.UIAutomation != nil {
 }
 
 func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (packer.Artifact, error) {
-	// Set up cancelable build context
-	ctx, cancelBuild := context.WithCancel(ctx)
-
-	// Setup the state bag and initial state for the steps
-	state := new(multistep.BasicStateBag)
-	state.Put("config", &b.config)
-	state.Put("debug", b.config.PackerDebug)
-	state.Put("hook", hook)
-	state.Put("ui", ui)
-	state.Put("cancel-build", cancelBuild)
-
 	steps := []multistep.Step{
 		new(stepCleanVM), // cleanup the VM if the build is cancelled or halted
 	}
@@ -155,28 +130,30 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 		steps = append(steps, new(stepCloneVM))
 	}
 
-	steps = append(steps,
+	steps = append(
+		steps,
 		new(stepSetVM),
 		new(stepDiskFilePrepare),
 	)
 
+	communicatorConfigured := b.config.CommunicatorConfig.Type != "none"
+	uiAutomationEnabled := b.config.UIAutomation != nil && b.config.UIAutomation.Enabled
 
-useUIAutomation := b.config.UIAutomation != nil && b.config.UIAutomation.Enabled
+	// stepRun is the Tart VM start step. Keep using the plugin's existing stepRun.
+	// There is no StepBootCommand type in this plugin; boot_command handling is tied to stepRun.
+	if len(b.config.BootCommand) > 0 || communicatorConfigured || uiAutomationEnabled {
+		steps = append(steps, new(stepRun))
+	}
 
-if !useUIAutomation {
-    steps = append(steps, &StepBootCommand{
-        // keep existing upstream args exactly as-is
-    })
-}
+	// New pre-SSH UI automation insertion point.
+	// This runs after Tart starts the VM and before SSH/IP communicator connection.
+	if uiAutomationEnabled {
+		steps = append(steps, &StepUIAutomation{
+			Config: b.config.UIAutomation,
+		})
+	}
 
-if useUIAutomation {
-    steps = append(steps, &StepUIAutomation{
-        Config: b.config.UIAutomation,
-    })
-}
-
-
-	if communicatorConfigured {
+	if !b.config.Recovery && communicatorConfigured {
 		steps = append(steps,
 			&communicator.StepSSHKeyGen{
 				CommConf:            &b.config.CommunicatorConfig,
@@ -193,6 +170,13 @@ if useUIAutomation {
 			&commonsteps.StepProvision{},
 		)
 	}
+
+	// Setup the state bag and initial state for the steps
+	state := new(multistep.BasicStateBag)
+	state.Put("config", &b.config)
+	state.Put("debug", b.config.PackerDebug)
+	state.Put("hook", hook)
+	state.Put("ui", ui)
 
 	// Run
 	b.runner = commonsteps.NewRunnerWithPauseFn(steps, b.config.PackerConfig, ui, state)
@@ -216,5 +200,6 @@ if useUIAutomation {
 		VMName:    b.config.VMName,
 		StateData: map[string]interface{}{"generated_data": state.Get("generated_data")},
 	}
+
 	return artifact, nil
 }

@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/version"
 	"os"
-	"packer-plugin-tart/builder/tart"
-	"packer-plugin-tart/version"
 
 	"github.com/hashicorp/packer-plugin-sdk/plugin"
 )
