@@ -12,6 +12,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/zclconf/go-cty v1.17.0
 	howett.net/plist v1.0.1
+	github.com/peter1122999/packer-plugin-tart-uiautomate
 )
 
 require (

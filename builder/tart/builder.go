@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/packer-plugin-sdk/packer"
 	"github.com/hashicorp/packer-plugin-sdk/template/config"
 	"github.com/hashicorp/packer-plugin-sdk/template/interpolate"
+	"github.com/peter1122999/packer-plugin-tart-uiautomate/builder/tart/uiauto"
 )
 
 const BuilderId = "tart.builder"
@@ -47,8 +48,10 @@ type Config struct {
 	Rosetta           string        `mapstructure:"rosetta"`
 	RunExtraArgs      []string      `mapstructure:"run_extra_args"`
 	IpExtraArgs       []string      `mapstructure:"ip_extra_args"`
+	UIAutomation *uiauto.Config `mapstructure:"ui_automation"`
 
 	ctx interpolate.Context
+	
 }
 
 type Builder struct {
@@ -72,6 +75,12 @@ func (b *Builder) Prepare(raws ...interface{}) (generatedVars []string, warnings
 	if err != nil {
 		return nil, nil, err
 	}
+
+if c.UIAutomation != nil {
+    if err := c.UIAutomation.PrepareDefaults(); err != nil {
+        errs = packersdk.MultiErrorAppend(errs, err)
+    }
+}
 
 	fromArgs := []bool{
 		b.config.FromIPSW != "",
@@ -151,10 +160,21 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 		new(stepDiskFilePrepare),
 	)
 
-	communicatorConfigured := b.config.CommunicatorConfig.Type != "none"
-	if len(b.config.BootCommand) > 0 || communicatorConfigured {
-		steps = append(steps, new(stepRun))
-	}
+
+useUIAutomation := b.config.UIAutomation != nil && b.config.UIAutomation.Enabled
+
+if !useUIAutomation {
+    steps = append(steps, &StepBootCommand{
+        // keep existing upstream args exactly as-is
+    })
+}
+
+if useUIAutomation {
+    steps = append(steps, &StepUIAutomation{
+        Config: b.config.UIAutomation,
+    })
+}
+
 
 	if communicatorConfigured {
 		steps = append(steps,
