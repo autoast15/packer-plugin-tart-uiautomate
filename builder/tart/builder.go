@@ -51,7 +51,7 @@ type Config struct {
 	RunExtraArgs      []string      `mapstructure:"run_extra_args"`
 	IpExtraArgs       []string      `mapstructure:"ip_extra_args"`
 
-	UIAutomation *uiauto.Config `mapstructure:"-"`
+	UIAutomation *uiauto.Config `mapstructure:"ui_automation"`
 
 	ctx interpolate.Context
 }
