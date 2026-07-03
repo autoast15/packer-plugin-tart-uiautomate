@@ -97,7 +97,7 @@ func selectControl(
         if value != "" && !containsFold(c.Value, value) {
             continue
         }
-        if style != "" && !strings.EqualFold(c.Style, style) {
+        if style != "" && !containsFold(c.Style, style) {
             continue
         }
         if selected != nil && (c.Selected == nil || *c.Selected != *selected) {
