@@ -31,6 +31,38 @@ func containsFold(s, sub string) bool {
     return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
 }
 
+// rectContainsCenter reports whether r's own center falls inside container.
+// Used for the "sidebar"/"content" regions, which come from PaneDetector's
+// actual pixel-measured divider rather than a fixed screen fraction — a
+// window-relative pane boundary that can sit anywhere depending on the
+// captured window's width, unlike the quadrant regions below which assume
+// the whole screen is one uniform surface.
+func rectContainsCenter(container, r Rect) bool {
+    if container.W == 0 || container.H == 0 {
+        return true
+    }
+    cx, cy := r.Center()
+    return cx >= container.X && cx < container.X+container.W &&
+        cy >= container.Y && cy < container.Y+container.H
+}
+
+func regionOKWithPanes(screen Screen, r Rect, region string, panes *Panes) bool {
+    switch region {
+    case "sidebar":
+        if panes == nil {
+            return regionOK(screen, r, "top-left") // best-effort fallback
+        }
+        return rectContainsCenter(panes.Sidebar, r)
+    case "content":
+        if panes == nil {
+            return true // no pane info — don't filter out real controls
+        }
+        return rectContainsCenter(panes.Content, r)
+    default:
+        return regionOK(screen, r, region)
+    }
+}
+
 func regionOK(screen Screen, r Rect, region string) bool {
     if region == "" || region == "any" {
         return true
@@ -63,7 +95,7 @@ func regionOK(screen Screen, r Rect, region string) bool {
 func selectOCR(d *Detection, text, region, match string) (OCRItem, bool) {
     var hits []OCRItem
     for _, o := range d.OCR {
-        if containsFold(o.Text, text) && regionOK(d.Screen, o.BBox, region) {
+        if containsFold(o.Text, text) && regionOKWithPanes(d.Screen, o.BBox, region, d.Panes) {
             hits = append(hits, o)
         }
     }
@@ -106,7 +138,7 @@ func selectControl(
         if enabled != nil && (c.Enabled == nil || *c.Enabled != *enabled) {
             continue
         }
-        if !regionOK(d.Screen, c.BBox, region) {
+        if !regionOKWithPanes(d.Screen, c.BBox, region, d.Panes) {
             continue
         }
         hits = append(hits, c)

@@ -33,9 +33,15 @@ type OCRItem struct {
     Confidence float64 `json:"confidence" mapstructure:"confidence"`
 }
 
+type Panes struct {
+    Sidebar Rect `json:"sidebar" mapstructure:"sidebar"`
+    Content Rect `json:"content" mapstructure:"content"`
+}
+
 type Detection struct {
     Screen   Screen    `json:"screen" mapstructure:"screen"`
     Scene    string    `json:"scene" mapstructure:"scene"`
     Controls []Control `json:"controls" mapstructure:"controls"`
     OCR      []OCRItem `json:"ocr" mapstructure:"ocr"`
+    Panes    *Panes    `json:"panes,omitempty" mapstructure:"panes"`
 }

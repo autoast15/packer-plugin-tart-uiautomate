@@ -27,9 +27,23 @@ type Action struct {
     ClearFirst          bool     `mapstructure:"clear_first" json:"clear_first"`
     Region              string   `mapstructure:"region" json:"region"`
     Match               string   `mapstructure:"match" json:"match"`
+    // OffsetX/OffsetY shift a click_text click away from the matched
+    // text's own center, in the same window-relative coordinate space
+    // click/click_control/click_text already use. For clicking a
+    // control that sits a fixed distance from a label that OCRs
+    // reliably but whose own detection is unreliable (e.g. a toggle
+    // switch to the right of a Settings row's text) — see cgtool-project
+    // memory (2026-07-03, click_text offset) for why this exists instead
+    // of hardcoded absolute pixel positions.
+    OffsetX             int      `mapstructure:"offset_x" json:"offset_x"`
+    OffsetY             int      `mapstructure:"offset_y" json:"offset_y"`
     Scene               string   `mapstructure:"scene" json:"scene"`
     TimeoutSeconds      int      `mapstructure:"timeout_seconds" json:"timeout_seconds"`
     Args                []string `mapstructure:"args" json:"args"`
+    // MaxScrolls bounds scroll_collect's scroll loop — without a cap a
+    // pane whose content never stops changing (a live clock, a spinner)
+    // would scroll forever since "no new controls" would never trigger.
+    MaxScrolls          int      `mapstructure:"max_scrolls" json:"max_scrolls"`
 }
 
 type Scene struct {

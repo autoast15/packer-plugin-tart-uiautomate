@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -114,6 +115,30 @@ func (s *stepRun) Run(ctx context.Context, state multistep.StateBag) multistep.S
 		}
 	}()
 
+	// Capture the VNC endpoint tart prints on stdout whenever something
+	// downstream needs it: boot commands, or ui_automation (whose vnc_*
+	// actions send input straight into the guest via RFB).
+	uiAutoEnabled := config.UIAutomation != nil && config.UIAutomation.Enabled
+	if !config.DisableVNC && (len(config.BootCommand) > 0 || uiAutoEnabled) {
+		ui.Say("Waiting for VNC server credentials from Tart...")
+		host, port, password, ok := waitForVNCCredentials(ctx, stdout, 30*time.Second)
+		if ok {
+			ui.Sayf("If you want to view the screen of the VM, connect via VNC with the password \"%s\" to\n"+
+				"vnc://%s:%d", password, host, port)
+			state.Put("vnc-host", host)
+			state.Put("vnc-port", port)
+			state.Put("vnc-password", password)
+		} else if len(config.BootCommand) > 0 {
+			err := errors.New("timed out waiting for VNC server credentials from Tart")
+			state.Put("error", err)
+			ui.Error(err.Error())
+			return multistep.ActionHalt
+		} else {
+			ui.Error("ui_automation: no VNC credentials appeared on Tart stdout; " +
+				"vnc_* actions will fail unless vnc_password is set explicitly")
+		}
+	}
+
 	if len(config.BootCommand) > 0 && !config.DisableVNC {
 		if !typeBootCommandOverVNC(ctx, state, config, ui, stdout) {
 			return multistep.ActionHalt
@@ -121,6 +146,33 @@ func (s *stepRun) Run(ctx context.Context, state multistep.StateBag) multistep.S
 	}
 
 	return multistep.ActionContinue
+}
+
+// waitForVNCCredentials polls the tart run stdout buffer for the
+// "vnc://user:password@host:port" line and returns its parts.
+func waitForVNCCredentials(
+	ctx context.Context,
+	tartRunStdout *bytes.Buffer,
+	timeout time.Duration,
+) (host string, port int, password string, ok bool) {
+	deadline := time.Now().Add(timeout)
+	for {
+		matches := vncRegexp.FindStringSubmatch(tartRunStdout.String())
+		if len(matches) == 1+vncRegexp.NumSubexp() {
+			password = matches[1]
+			host = matches[2]
+			port, _ = strconv.Atoi(matches[3])
+			return host, port, password, port > 0
+		}
+		if time.Now().After(deadline) {
+			return "", 0, "", false
+		}
+		select {
+		case <-ctx.Done():
+			return "", 0, "", false
+		case <-time.After(time.Second):
+		}
+	}
 }
 
 type uiWriter struct {

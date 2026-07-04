@@ -36,6 +36,23 @@ func (s *StepUIAutomation) Run(ctx context.Context, state multistep.StateBag) mu
 		return multistep.ActionHalt
 	}
 
+	// Adopt the live VNC endpoint stepRun captured from tart stdout so
+	// vnc_* actions reach this boot's VNC server. An explicit vnc_password
+	// in HCL wins over the discovered one.
+	if host, ok := state.Get("vnc-host").(string); ok && host != "" {
+		s.Config.VNCHost = host
+	}
+	if port, ok := state.Get("vnc-port").(int); ok && port != 0 {
+		s.Config.VNCPort = port
+	}
+	if password, ok := state.Get("vnc-password").(string); ok && password != "" && s.Config.VNCPassword == "" {
+		s.Config.VNCPassword = password
+	}
+	if s.Config.VNCPassword != "" {
+		ui.Say(fmt.Sprintf("ui_automation: VNC input endpoint %s:%d (password set)",
+			s.Config.VNCHost, s.Config.VNCPort))
+	}
+
 	ui.Say("Running ui_automation before SSH wait...")
 
 	if err := uiauto.NewRunner(s.Config, ui).Run(ctx); err != nil {

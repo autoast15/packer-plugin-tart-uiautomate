@@ -32,9 +32,12 @@ type FlatAction struct {
 	ClearFirst          *bool    `mapstructure:"clear_first" json:"clear_first" cty:"clear_first" hcl:"clear_first"`
 	Region              *string  `mapstructure:"region" json:"region" cty:"region" hcl:"region"`
 	Match               *string  `mapstructure:"match" json:"match" cty:"match" hcl:"match"`
+	OffsetX             *int     `mapstructure:"offset_x" json:"offset_x" cty:"offset_x" hcl:"offset_x"`
+	OffsetY             *int     `mapstructure:"offset_y" json:"offset_y" cty:"offset_y" hcl:"offset_y"`
 	Scene               *string  `mapstructure:"scene" json:"scene" cty:"scene" hcl:"scene"`
 	TimeoutSeconds      *int     `mapstructure:"timeout_seconds" json:"timeout_seconds" cty:"timeout_seconds" hcl:"timeout_seconds"`
 	Args                []string `mapstructure:"args" json:"args" cty:"args" hcl:"args"`
+	MaxScrolls          *int     `mapstructure:"max_scrolls" json:"max_scrolls" cty:"max_scrolls" hcl:"max_scrolls"`
 }
 
 // FlatMapstructure returns a new FlatAction.
@@ -71,9 +74,12 @@ func (*FlatAction) HCL2Spec() map[string]hcldec.Spec {
 		"clear_first":            &hcldec.AttrSpec{Name: "clear_first", Type: cty.Bool, Required: false},
 		"region":                 &hcldec.AttrSpec{Name: "region", Type: cty.String, Required: false},
 		"match":                  &hcldec.AttrSpec{Name: "match", Type: cty.String, Required: false},
+		"offset_x":               &hcldec.AttrSpec{Name: "offset_x", Type: cty.Number, Required: false},
+		"offset_y":               &hcldec.AttrSpec{Name: "offset_y", Type: cty.Number, Required: false},
 		"scene":                  &hcldec.AttrSpec{Name: "scene", Type: cty.String, Required: false},
 		"timeout_seconds":        &hcldec.AttrSpec{Name: "timeout_seconds", Type: cty.Number, Required: false},
 		"args":                   &hcldec.AttrSpec{Name: "args", Type: cty.List(cty.String), Required: false},
+		"max_scrolls":            &hcldec.AttrSpec{Name: "max_scrolls", Type: cty.Number, Required: false},
 	}
 	return s
 }
