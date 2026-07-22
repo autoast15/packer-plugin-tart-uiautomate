@@ -236,7 +236,7 @@ func typeBootCommandOverVNC(
 	if config.HTTPDir != "" || len(config.HTTPContent) != 0 {
 		ui.Say("Detecting host IP...")
 
-		hostIP, err := detectHostIP(ctx, config)
+		hostIP, err := detectHostIP(ctx, config, ui)
 		if err != nil {
 			err := fmt.Errorf("Failed to detect the host IP address: %v", err)
 			state.Put("error", err)
@@ -356,20 +356,6 @@ func typeBootCommandOverVNC(
 	command = stringClickRegex.ReplaceAllString(command,
 		fmt.Sprintf(`%c${1}%c`, ClickStringStart, ClickStringEnd))
 
-	// Waiting for https://github.com/hashicorp/packer-plugin-sdk/pull/293
-	leftCommandRegex := regexp.MustCompile(`<leftCommand(On|Off)?>`)
-	command = leftCommandRegex.ReplaceAllString(command,
-		fmt.Sprintf(`<%c${1}>`, LeftCommand))
-	rightCommandRegex := regexp.MustCompile(`<rightCommand(On|Off)?>`)
-	command = rightCommandRegex.ReplaceAllString(command,
-		fmt.Sprintf(`<%c${1}>`, RightCommand))
-	leftOptionRegex := regexp.MustCompile(`<leftOption(On|Off)?>`)
-	command = leftOptionRegex.ReplaceAllString(command,
-		fmt.Sprintf(`<%c${1}>`, LeftOption))
-	rightOptionRegex := regexp.MustCompile(`<rightOption(On|Off)?>`)
-	command = rightOptionRegex.ReplaceAllString(command,
-		fmt.Sprintf(`<%c${1}>`, RightOption))
-
 	seq, err := bootcommand.GenerateExpressionSequence(command)
 	if err != nil {
 		err := fmt.Errorf("Failed to parse the boot command: %s", err)
@@ -392,7 +378,7 @@ func typeBootCommandOverVNC(
 	return true
 }
 
-func detectHostIP(ctx context.Context, config *Config) (string, error) {
+func detectHostIP(ctx context.Context, config *Config, ui packersdk.Ui) (string, error) {
 	if config.HTTPAddress != "0.0.0.0" {
 		return config.HTTPAddress, nil
 	}
@@ -404,6 +390,36 @@ func detectHostIP(ctx context.Context, config *Config) (string, error) {
 	}
 	vmIP := net.ParseIP(vmIPRaw)
 
+	// The host-side vmnet bridge whose subnet contains the VM IP may not be up
+	// yet, so retry the interface scan until it appears or we hit the deadline.
+	deadline := time.Now().Add(2 * time.Minute)
+	var lastLog time.Time
+	for {
+		hostIP, err := hostIPForVMIP(vmIP)
+		if err == nil {
+			return hostIP, nil
+		}
+
+		if time.Now().After(deadline) {
+			return "", err
+		}
+
+		if time.Since(lastLog) >= 5*time.Second {
+			ui.Say(fmt.Sprintf("Waiting for the host-side vmnet bridge for "+
+				"VM IP %s to come up...", vmIP))
+			lastLog = time.Now()
+		}
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(time.Second):
+			// retry
+		}
+	}
+}
+
+func hostIPForVMIP(vmIP net.IP) (string, error) {
 	// Find the interface that has this IP
 	interfaces, err := net.Interfaces()
 	if err != nil {
